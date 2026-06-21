@@ -21,13 +21,29 @@ jobs:
           npm install
           npm install sharp
 
-      - name: Set environment variables
+      - name: Set environment variables (safe write)
         run: |
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
-          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> $GITHUB_ENV
-          echo "YT_REFRESH_TOKEN=${{ secrets.YT_REFRESH_TOKEN }}" >> $GITHUB_ENV
-          echo "YT_CREDENTIALS_JSON=${{ secrets.YT_CREDENTIALS_JSON }}" >> $GITHUB_ENV
+          {
+            echo "GEMINI_API_KEY<<EOF"
+            echo "${{ secrets.GEMINI_API_KEY }}"
+            echo "EOF"
+
+            echo "OPENAI_API_KEY<<EOF"
+            echo "${{ secrets.OPENAI_API_KEY }}"
+            echo "EOF"
+
+            echo "YOUTUBE_API_KEY<<EOF"
+            echo "${{ secrets.YOUTUBE_API_KEY }}"
+            echo "EOF"
+
+            echo "YT_REFRESH_TOKEN<<EOF"
+            echo "${{ secrets.YT_REFRESH_TOKEN }}"
+            echo "EOF"
+
+            echo "YT_CREDENTIALS_JSON<<EOF"
+            echo "${{ secrets.YT_CREDENTIALS_JSON }}"
+            echo "EOF"
+          } >> $GITHUB_ENV
 
       - name: Run automation pipeline
         run: node index.js
