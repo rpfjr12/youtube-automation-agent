@@ -1,0 +1,44 @@
+name: YouTube Automation Agent
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+    - cron: "*/15 * * * *"
+    - cron: "0 9 * * *"
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create credentials.json
+        run: |
+          mkdir -p config
+          echo '${{ secrets.YT_CREDENTIALS_JSON }}' > config/credentials.json
+
+      - name: Create .env
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "CHANNEL_NAME=${{ secrets.CHANNEL_NAME }}" >> .env
+          echo "TARGET_AUDIENCE=${{ secrets.TARGET_AUDIENCE }}" >> .env
+          echo "YOUTUBE_REGION=US" >> .env
+          echo "DEFAULT_PRIVACY_STATUS=public" >> .env
+          echo "NODE_ENV=production" >> .env
+
+      - name: Run automation pipeline
+        run: node index.js
