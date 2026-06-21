@@ -21,13 +21,18 @@ jobs:
           npm install
           npm install sharp
 
-      - name: Load secrets into environment
+      - name: Load secrets into environment (base64 safe)
         run: |
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
           echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> $GITHUB_ENV
           echo "YT_REFRESH_TOKEN=${{ secrets.YT_REFRESH_TOKEN }}" >> $GITHUB_ENV
-          echo "YT_CREDENTIALS_JSON=${{ secrets.YT_CREDENTIALS_JSON }}" >> $GITHUB_ENV
+
+          # Base64 encode the JSON so GitHub doesn't break it
+          echo "YT_CREDENTIALS_JSON=$(echo '${{ secrets.YT_CREDENTIALS_JSON }}' | base64 -w 0)" >> $GITHUB_ENV
 
       - name: Run automation pipeline
-        run: node index.js
+        run: |
+          # Decode before running Node
+          export YT_CREDENTIALS_JSON=$(echo "$YT_CREDENTIALS_JSON" | base64 -d)
+          node index.js
