@@ -24,8 +24,9 @@ class CredentialManager {
 
   loadYouTubeCredentials() {
     try {
-      if (!process.env.YT_CREDENTIALS_JSON) return null;
-      return JSON.parse(process.env.YT_CREDENTIALS_JSON);
+      const raw = process.env.YT_CREDENTIALS_JSON;
+      if (!raw || raw.trim() === "") return null;
+      return JSON.parse(raw);
     } catch (err) {
       this.logger.error('Invalid YT_CREDENTIALS_JSON format');
       return null;
@@ -34,8 +35,9 @@ class CredentialManager {
 
   loadYouTubeTokens() {
     try {
-      if (!process.env.YT_REFRESH_TOKEN) return null;
-      return { refresh_token: process.env.YT_REFRESH_TOKEN };
+      const token = process.env.YT_REFRESH_TOKEN;
+      if (!token || token.trim() === "") return null;
+      return { refresh_token: token };
     } catch (err) {
       this.logger.error('Invalid YouTube token');
       return null;
@@ -62,11 +64,33 @@ class CredentialManager {
   // VALIDATION
   // -----------------------------
 
+  async validateYouTube() {
+    // Validate JSON
+    if (!this.credentials.youtube) {
+      this.logger.error('Missing YouTube OAuth credentials');
+      return false;
+    }
+
+    // Validate refresh token
+    if (!this.tokens.youtube || !this.tokens.youtube.refresh_token) {
+      this.logger.error('Missing YouTube refresh token');
+      return false;
+    }
+
+    // Validate required fields inside JSON
+    const { client_id, client_secret } = this.credentials.youtube;
+    if (!client_id || !client_secret) {
+      this.logger.error('YouTube OAuth JSON missing client_id or client_secret');
+      return false;
+    }
+
+    return true;
+  }
+
   async validateAll() {
     const missing = [];
 
-    if (!this.credentials.youtube) missing.push('youtube');
-    if (!this.tokens.youtube) missing.push('youtube-token');
+    if (!await this.validateYouTube()) missing.push('youtube');
     if (!this.credentials.openai && !this.credentials.gemini) missing.push('ai-provider');
 
     if (missing.length > 0) {
