@@ -2,6 +2,7 @@ const chalk = require('chalk');
 const { Logger } = require('./utils/logger');
 const { Database } = require('./database/db');
 const { CredentialManager } = require('./utils/credential-manager');
+
 const { ContentStrategyAgent } = require('./agents/content-strategy-agent');
 const { ScriptWriterAgent } = require('./agents/script-writer-agent');
 const { ThumbnailDesignerAgent } = require('./agents/thumbnail-designer-agent');
@@ -13,7 +14,7 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
 (async () => {
   const logger = new Logger('BatchRunner');
 
-  console.log(chalk.cyan.bold('\n🎬 Autonomous Viral Batch Run\n'));
+  console.log(chalk.cyan.bold('\n🎬 Autonomous Batch Run (Free Mode)\n'));
   console.log(chalk.gray('─'.repeat(50)));
 
   // 1. Init DB
@@ -21,18 +22,19 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
   const db = new Database();
   await db.initialize();
 
-  // 2. Load credentials
+  // 2. Load credentials (only YouTube OAuth matters now)
   logger.info('Loading credentials...');
   const credentials = new CredentialManager();
-  const credentialsValid = await credentials.validateAll();
 
-  if (!credentialsValid) {
-    console.log(chalk.yellow('\n⚠ Some credentials are missing or invalid.'));
+  // Skip AI model validation — only check YouTube OAuth
+  const youtubeValid = await credentials.validateYouTube();
+  if (!youtubeValid) {
+    console.log(chalk.yellow('\n⚠ YouTube credentials missing or invalid.'));
     console.log(chalk.yellow('Run: npm run credentials:setup'));
     process.exit(1);
   }
 
-  // 3. Init agents (no server, no scheduler)
+  // 3. Init agents
   logger.info('Initializing agents...');
   const agents = {
     strategy: new ContentStrategyAgent(db, credentials),
@@ -49,27 +51,31 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
     logger.info(`✓ ${name} agent initialized`);
   }
 
-  console.log(chalk.green('\n✨ Agents ready. Generating batch of videos...\n'));
+  console.log(chalk.green('\n✨ Agents ready. Generating videos...\n'));
 
-  // 4. How many videos per run (tune this for speed vs volume)
-  const BATCH_SIZE = 3; // change to 1, 3, 5, etc.
+  // 4. Batch size
+  const BATCH_SIZE = 1; // keep 1 for speed; increase later if needed
 
   for (let i = 1; i <= BATCH_SIZE; i++) {
     console.log(chalk.white(`\n📹 Generating video ${i}/${BATCH_SIZE}...\n`));
 
-    // Strategy picks best topic for growth
+    // Strategy
     const strategy = await agents.strategy.generateContentStrategy(null);
     logger.info(`Strategy topic: ${strategy.topic}`);
 
+    // Script
     const script = await agents.scriptWriter.generateScript(strategy);
-    logger.info(`Script: ${script.title}`);
+    logger.info(`Script generated: ${script.title}`);
 
+    // Thumbnail
     const thumbnail = await agents.thumbnailDesigner.generateThumbnail(script);
     logger.info('Thumbnail generated');
 
+    // SEO
     const seoData = await agents.seoOptimizer.optimize(script, strategy);
     logger.info('SEO optimization complete');
 
+    // Production (audio, visuals, video assembly)
     const productionData = await agents.production.processContent({
       strategy,
       script,
@@ -78,9 +84,11 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
     });
     logger.info('Production processing complete');
 
+    // Save content
     const contentId = await db.saveProductionData(productionData);
     logger.info(`Content saved with ID: ${contentId}`);
 
+    // Upload to YouTube
     console.log(chalk.white('\n📤 Uploading to YouTube...\n'));
     const uploadResult = await agents.publishing.publishContent(contentId);
 
