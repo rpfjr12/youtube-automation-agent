@@ -17,16 +17,19 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
   console.log(chalk.cyan.bold('\n🎬 Autonomous Batch Run (Free Mode)\n'));
   console.log(chalk.gray('─'.repeat(50)));
 
-  // 1. Init DB
+  // -----------------------------
+  // 1. Initialize Database
+  // -----------------------------
   logger.info('Initializing database...');
   const db = new Database();
   await db.initialize();
 
-  // 2. Load credentials (only YouTube OAuth matters now)
+  // -----------------------------
+  // 2. Load & Validate Credentials
+  // -----------------------------
   logger.info('Loading credentials...');
   const credentials = new CredentialManager();
 
-  // Skip AI model validation — only check YouTube OAuth
   const youtubeValid = await credentials.validateYouTube();
   if (!youtubeValid) {
     console.log(chalk.yellow('\n⚠ YouTube credentials missing or invalid.'));
@@ -34,7 +37,9 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
     process.exit(1);
   }
 
-  // 3. Init agents
+  // -----------------------------
+  // 3. Initialize Agents
+  // -----------------------------
   logger.info('Initializing agents...');
   const agents = {
     strategy: new ContentStrategyAgent(db, credentials),
@@ -53,8 +58,10 @@ const { AnalyticsOptimizationAgent } = require('./agents/analytics-optimization-
 
   console.log(chalk.green('\n✨ Agents ready. Generating videos...\n'));
 
-  // 4. Batch size
-  const BATCH_SIZE = 1; // keep 1 for speed; increase later if needed
+  // -----------------------------
+  // 4. Batch Size
+  // -----------------------------
+  const BATCH_SIZE = 1; // adjust later for volume
 
   for (let i = 1; i <= BATCH_SIZE; i++) {
     console.log(chalk.white(`\n📹 Generating video ${i}/${BATCH_SIZE}...\n`));
