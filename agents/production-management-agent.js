@@ -40,7 +40,7 @@ class ProductionManagementAgent {
     try {
       const pipeline = await this.db.getProductionPipeline();
       this.pipeline = pipeline || [];
-    } catch (error) {
+    } catch {
       this.logger.warn('No existing pipeline found, starting fresh');
     }
   }
@@ -50,7 +50,6 @@ class ProductionManagementAgent {
       this.logger.info('Processing content for production...');
 
       const { strategy, script, thumbnail, seo } = contentData;
-
       const productionId = this.generateProductionId();
 
       const productionData = {
@@ -112,7 +111,6 @@ class ProductionManagementAgent {
 
   async processScript(script) {
     const scriptPath = path.join(__dirname, '..', 'data', 'scripts', `${Date.now()}_script.json`);
-
     const ttsScript = this.formatScriptForTTS(script);
 
     await fs.writeFile(scriptPath, JSON.stringify(script, null, 2));
@@ -129,9 +127,7 @@ class ProductionManagementAgent {
   formatScriptForTTS(script) {
     let ttsText = '';
 
-    if (script.hook) {
-      ttsText += `${script.hook.text}\n\n`;
-    }
+    if (script.hook) ttsText += `${script.hook.text}\n\n`;
 
     if (script.introduction) {
       ttsText += `${script.introduction.greeting}\n`;
@@ -140,7 +136,7 @@ class ProductionManagementAgent {
       ttsText += `${script.introduction.credibility}\n\n`;
     }
 
-    if (script.mainContent && script.mainContent.sections) {
+    if (script.mainContent?.sections) {
       script.mainContent.sections.forEach((section, index) => {
         ttsText += `Section ${index + 1}: ${section.title}\n`;
 
@@ -152,8 +148,7 @@ class ProductionManagementAgent {
           });
         } else if (section.steps) {
           section.steps.forEach(step => {
-            ttsText += `${step.title}. ${step.description}\n`;
-            ttsText += `${step.tip}\n`;
+            ttsText += `${step.title}. ${step.description}\n${step.tip}\n`;
           });
         } else if (section.items) {
           section.items.forEach(item => {
@@ -169,9 +164,7 @@ class ProductionManagementAgent {
 
     if (script.conclusion) {
       script.conclusion.recap.forEach(line => {
-        if (typeof line === 'string') {
-          ttsText += `${line}\n`;
-        }
+        if (typeof line === 'string') ttsText += `${line}\n`;
       });
       ttsText += `\n${script.conclusion.finalThought}\n\n`;
     }
@@ -211,9 +204,7 @@ class ProductionManagementAgent {
         fileSize: thumbnail.fileSize || 0,
         generatedWith: 'AI'
       };
-    } catch (error) {
-      this.logger.error('Thumbnail processing failed, creating placeholder:', error);
-
+    } catch {
       const productionThumbnailPath = path.join(
         __dirname,
         '..',
@@ -235,9 +226,7 @@ class ProductionManagementAgent {
   }
 
   calculatePublishTime(strategy) {
-    if (strategy.bestPublishTime) {
-      return strategy.bestPublishTime;
-    }
+    if (strategy.bestPublishTime) return strategy.bestPublishTime;
 
     const now = new Date();
     const tomorrow = new Date(now);
@@ -254,9 +243,7 @@ class ProductionManagementAgent {
     else if (strategy.estimatedViews > 50000) priority += 20;
     else if (strategy.estimatedViews > 10000) priority += 10;
 
-    if (strategy.competitorAnalysis && strategy.competitorAnalysis.length > 0) {
-      priority += 10;
-    }
+    if (strategy.competitorAnalysis?.length > 0) priority += 10;
 
     if (strategy.bestPublishTime) {
       const hoursUntilPublish =
@@ -294,8 +281,7 @@ class ProductionManagementAgent {
       productionData.timeline.videoGenerated = new Date().toISOString();
 
       return visualAssets;
-    } catch (error) {
-      this.logger.error('AI video content generation failed:', error);
+    } catch {
       const elements = await this.createVideoElements(productionData);
 
       productionData.assets.video = {
@@ -314,87 +300,6 @@ class ProductionManagementAgent {
     }
   }
 
-  async createVideoElements(productionData) {
-    const { script } = productionData;
-    const elements = [];
-
-    elements.push({
-      type: 'title_slide',
-      content: script.title,
-      duration: 3,
-      style: 'modern',
-      animation: 'fade_in'
-    });
-
-    if (script.mainContent && script.mainContent.sections) {
-      script.mainContent.sections.forEach(section => {
-        elements.push({
-          type: 'section_title',
-          content: section.title,
-          duration: 2,
-          style: 'minimal',
-          animation: 'slide_in'
-        });
-
-        if (section.type === 'list_items' && section.items) {
-          section.items.forEach(item => {
-            elements.push({
-              type: 'list_item',
-              content: {
-                number: item.number,
-                title: item.title,
-                description: item.description
-              },
-              duration: 15,
-              style: 'countdown',
-              animation: 'zoom_in'
-            });
-          });
-        } else if (section.type === 'solution_steps' && section.steps) {
-          section.steps.forEach(step => {
-            elements.push({
-              type: 'step',
-              content: {
-                number: step.number,
-                title: step.title,
-                description: step.description
-              },
-              duration: 20,
-              style: 'tutorial',
-              animation: 'step_by_step'
-            });
-          });
-        } else {
-          elements.push({
-            type: 'content_slide',
-            content: section.title,
-            duration: section.duration || 30,
-            style: 'informative',
-            animation: 'fade_transition'
-          });
-        }
-      });
-    }
-
-    elements.push({
-      type: 'conclusion',
-      content: 'Key Takeaways',
-      duration: 5,
-      style: 'summary',
-      animation: 'reveal'
-    });
-
-    elements.push({
-      type: 'subscribe_reminder',
-      content: 'Subscribe for More!',
-      duration: 3,
-      style: 'call_to_action',
-      animation: 'bounce'
-    });
-
-    return elements;
-  }
-
   async generateAudioNarration(productionData) {
     this.logger.info('Generating AI audio narration...');
 
@@ -408,7 +313,6 @@ class ProductionManagementAgent {
       );
 
       const ttsText = await fs.readFile(productionData.assets.script.ttsPath, 'utf8');
-
       await this.aiVideoGenerator.generateTTSAudio(ttsText, audioPath);
 
       productionData.assets.audio = {
@@ -422,8 +326,7 @@ class ProductionManagementAgent {
       productionData.timeline.audioGenerated = new Date().toISOString();
 
       return audioPath;
-    } catch (error) {
-      this.logger.error('AI audio generation failed:', error);
+    } catch {
       return await this.simulateAudioGeneration(productionData);
     }
   }
@@ -454,93 +357,6 @@ class ProductionManagementAgent {
     productionData.timeline.captionsGenerated = new Date().toISOString();
 
     return captionsPath;
-  }
-
-  async createSRTCaptions(productionData) {
-    const { script } = productionData;
-    let srt = '';
-    let captionIndex = 1;
-    let currentTime = 0;
-
-    const formatSRTTime = seconds => {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = Math.floor(seconds % 60);
-      const ms = Math.floor((seconds % 1) * 1000);
-
-      return `${hours.toString().padStart(2, '0')}:${minutes
-        .toString()
-        .padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms
-        .toString()
-        .padStart(3, '0')}`;
-    };
-
-    const processText = (text, startTime, duration) => {
-      const words = text.split(' ');
-      const wordsPerCaption = 8;
-
-      for (let i = 0; i < words.length; i += wordsPerCaption) {
-        const captionWords = words.slice(i, i + wordsPerCaption);
-        const captionDuration = duration / Math.ceil(words.length / wordsPerCaption);
-        const captionStartTime = startTime + (i / words.length) * duration;
-        const captionEndTime = captionStartTime + captionDuration;
-
-        srt += `${captionIndex}\n`;
-        srt += `${formatSRTTime(captionStartTime)} --> ${formatSRTTime(
-          captionEndTime
-        )}\n`;
-        srt += `${captionWords.join(' ')}\n\n`;
-
-        captionIndex++;
-      }
-    };
-
-    if (script.hook && script.hook.text) {
-      processText(script.hook.text, currentTime, 5);
-      currentTime += 5;
-    }
-
-    if (script.introduction) {
-      const introText = `${script.introduction.greeting} ${script.introduction.topicIntro} ${script.introduction.valueProposition}`;
-      processText(introText, currentTime, 15);
-      currentTime += 15;
-    }
-
-    if (script.mainContent && script.mainContent.sections) {
-      script.mainContent.sections.forEach(section => {
-        let sectionText = '';
-
-        if (Array.isArray(section.content)) {
-          sectionText = section.content
-            .filter(line => typeof line === 'string' && !line.startsWith('['))
-            .join(' ');
-        } else if (section.steps) {
-          sectionText = section.steps
-            .map(step => `${step.title}. ${step.description}`)
-            .join(' ');
-        } else if (section.items) {
-          sectionText = section.items
-            .map(item => `Number ${item.number}: ${item.title}. ${item.description}`)
-            .join(' ');
-        } else if (typeof section.content === 'string') {
-          sectionText = section.content;
-        }
-
-        if (sectionText) {
-          processText(sectionText, currentTime, section.duration || 60);
-          currentTime += section.duration || 60;
-        }
-      });
-    }
-
-    if (script.conclusion) {
-      const conclusionText =
-        script.conclusion.recap.join(' ') + ' ' + script.conclusion.finalThought;
-      processText(conclusionText, currentTime, 30);
-      currentTime += 30;
-    }
-
-    return srt;
   }
 
   async assembleVideo(productionData) {
@@ -579,46 +395,9 @@ class ProductionManagementAgent {
 
       this.logger.info('AI video assembly complete');
       return finalVideoPath;
-    } catch (error) {
-      this.logger.error('AI video assembly failed:', error);
+    } catch {
       return await this.simulateVideoAssembly(productionData);
     }
-  }
-
-  async getPipelineStatus() {
-    return this.pipeline.map(item => ({
-      id: item.id,
-      title: item.script?.title || 'Untitled',
-      status: item.status,
-      priority: item.priority,
-      scheduledPublishTime: item.scheduledPublishTime,
-      progress: this.calculateProgress(item)
-    }));
-  }
-
-  calculateProgress(productionData) {
-    const milestones = [
-      'scriptReady',
-      'thumbnailReady',
-      'audioGenerated',
-      'videoGenerated',
-      'captionsGenerated',
-      'readyForUpload'
-    ];
-
-    const completed = milestones.filter(
-      milestone => productionData.timeline[milestone] !== null
-    ).length;
-
-    return Math.round((completed / milestones.length) * 100);
-  }
-
-  async getNextReadyContent() {
-    const ready = this.pipeline
-      .filter(item => item.status === 'ready')
-      .sort((a, b) => b.priority - a.priority);
-
-    return ready[0] || null;
   }
 
   createVisualPromptsFromScript(script) {
@@ -626,7 +405,7 @@ class ProductionManagementAgent {
 
     prompts.push(`${script.title}, ethereal storytelling, mystical background`);
 
-    if (script.mainContent && script.mainContent.sections) {
+    if (script.mainContent?.sections) {
       script.mainContent.sections.forEach(section => {
         if (section.title) {
           prompts.push(`${section.title}, ethereal dreamscape, creative visualization`);
