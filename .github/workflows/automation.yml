@@ -20,6 +20,12 @@ jobs:
         run: |
           npm install
           npm install sharp
+          npm install node-gtts
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
       - name: Load secrets into environment (base64 safe)
         run: |
