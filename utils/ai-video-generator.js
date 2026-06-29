@@ -45,9 +45,7 @@ class AIVideoGenerator {
         `visual_${Date.now()}_${i}.jpg`
       );
 
-      // Use a free placeholder image service (no key, no billing)
       const url = `https://picsum.photos/1920/1080?random=${Date.now()}_${i}`;
-
       await this.downloadImage(url, imagePath);
       localPaths.push(imagePath);
     }
@@ -57,7 +55,6 @@ class AIVideoGenerator {
   }
 
   enhanceVisualPrompt(prompt, style) {
-    // Kept for compatibility, but not used with placeholder images
     return `${prompt} (${style})`;
   }
 
@@ -77,7 +74,6 @@ class AIVideoGenerator {
     this.logger.info('Generating video from assets with FFmpeg (free)...');
 
     try {
-      // No Replicate, no Playwright — just FFmpeg slideshow
       return await this.generateSlideshowVideo(script, visualAssets, audioPath, outputPath);
     } catch (error) {
       this.logger.error('Video generation failed:', error);
@@ -91,17 +87,16 @@ class AIVideoGenerator {
     const framesDir = path.join(path.dirname(outputPath), 'frames');
     await fs.mkdir(framesDir, { recursive: true });
 
-    // Simple: copy each visual asset into frames directory as numbered frames
+    // Save frames as JPEG
     for (let i = 0; i < visualAssets.length; i++) {
-      const target = path.join(framesDir, `frame_${String(i).padStart(6, '0')}.png`);
+      const target = path.join(framesDir, `frame_${String(i).padStart(6, '0')}.jpg`);
       await fs.copyFile(visualAssets[i], target);
     }
 
-    // If fewer frames than needed, FFmpeg will just hold them; we keep it simple
     const videoTemp = outputPath.replace('.mp4', '_visual.mp4');
 
     const ffmpegImagesCmd = `
-      ffmpeg -y -framerate 1 -i "${framesDir}/frame_%06d.png" \
+      ffmpeg -y -framerate 1 -i "${framesDir}/frame_%06d.jpg" \
       -c:v libx264 -pix_fmt yuv420p "${videoTemp}"
     `;
     await execAsync(ffmpegImagesCmd);
@@ -138,7 +133,7 @@ class AIVideoGenerator {
     }
   }
 
-  // ---------- SIMULATION FALLBACKS (kept for compatibility) ----------
+  // ---------- SIMULATION FALLBACKS ----------
   async simulateTTSGeneration(text, outputPath) {
     this.logger.info('Simulating TTS generation (fallback)...');
     await fs.writeFile(outputPath, text);
