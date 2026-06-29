@@ -27,7 +27,6 @@ class ContentStrategyAgent {
   }
 
   async generateLocalTrends() {
-    // Local simulated trending topics (free, no API)
     const baseTopics = [
       'AI Tools',
       'Productivity Hacks',
@@ -60,12 +59,20 @@ class ContentStrategyAgent {
     this.logger.info(`Loaded ${this.trendingTopics.length} local trending topics`);
   }
 
+  // --------------------------------------------------
+  // MAIN STRATEGY GENERATION
+  // --------------------------------------------------
   async generateContentStrategy(requestedTopic = null) {
     try {
-      let topic = requestedTopic || this.pickTrendingTopic();
-      let angle = this.generateAngle(topic);
-      let targetAudience = this.identifyAudience(topic);
-      let contentType = this.pickContentType(topic);
+      const topic = this.normalizeTopic(
+        typeof requestedTopic === 'string'
+          ? requestedTopic
+          : this.pickTrendingTopic()
+      );
+
+      const angle = this.generateAngle(topic);
+      const targetAudience = this.identifyAudience(topic);
+      const contentType = this.pickContentType(topic);
 
       const strategy = {
         topic,
@@ -75,7 +82,7 @@ class ContentStrategyAgent {
         keywords: this.extractKeywords(topic),
         estimatedViews: this.predictViews(topic),
         bestPublishTime: this.pickPublishTime(),
-        competitorAnalysis: [], // no external API
+        competitorAnalysis: [],
         createdAt: new Date().toISOString()
       };
 
@@ -90,6 +97,9 @@ class ContentStrategyAgent {
     }
   }
 
+  // --------------------------------------------------
+  // TOPIC PICKING & NORMALIZATION
+  // --------------------------------------------------
   pickTrendingTopic() {
     const recent = this.getRecentTopics();
 
@@ -97,11 +107,23 @@ class ContentStrategyAgent {
       t => !recent.includes(t.topic)
     );
 
-    if (filtered.length === 0) return this.trendingTopics[0];
+    const chosen =
+      filtered.length === 0
+        ? this.trendingTopics[0]
+        : filtered.sort((a, b) => b.score - a.score)[0];
 
-    return filtered.sort((a, b) => b.score - a.score)[0];
+    return chosen.topic; // ALWAYS return string
   }
 
+  normalizeTopic(topic) {
+    if (typeof topic === 'string') return topic.trim();
+    this.logger.error(`Invalid topic detected: ${JSON.stringify(topic)}`);
+    return 'AI Tools'; // safe fallback
+  }
+
+  // --------------------------------------------------
+  // ANGLE GENERATION
+  // --------------------------------------------------
   generateAngle(topic) {
     const angles = [
       `The Ultimate Guide to ${topic}`,
@@ -117,7 +139,15 @@ class ContentStrategyAgent {
     return angles[Math.floor(Math.random() * angles.length)];
   }
 
+  // --------------------------------------------------
+  // AUDIENCE DETECTION (SAFE)
+  // --------------------------------------------------
   identifyAudience(topic) {
+    if (typeof topic !== 'string') {
+      this.logger.error(`identifyAudience received invalid topic: ${JSON.stringify(topic)}`);
+      return 'General YouTube audience';
+    }
+
     const t = topic.toLowerCase();
 
     if (t.includes('ai') || t.includes('tech')) return 'Tech beginners & enthusiasts';
@@ -129,7 +159,12 @@ class ContentStrategyAgent {
     return 'General YouTube audience';
   }
 
+  // --------------------------------------------------
+  // CONTENT TYPE DETECTION (SAFE)
+  // --------------------------------------------------
   pickContentType(topic) {
+    if (typeof topic !== 'string') return 'Explainer';
+
     const t = topic.toLowerCase();
 
     if (t.includes('how') || t.includes('guide')) return 'Tutorial';
@@ -140,7 +175,12 @@ class ContentStrategyAgent {
     return 'Explainer';
   }
 
+  // --------------------------------------------------
+  // KEYWORD EXTRACTION (SAFE)
+  // --------------------------------------------------
   extractKeywords(text) {
+    if (typeof text !== 'string') return [];
+
     return text
       .toLowerCase()
       .replace(/[^\w\s]/g, '')
@@ -148,11 +188,16 @@ class ContentStrategyAgent {
       .filter(w => w.length > 3);
   }
 
+  // --------------------------------------------------
+  // VIEW PREDICTION
+  // --------------------------------------------------
   predictViews(topic) {
-    const base = Math.random() * 20000 + 5000;
-    return Math.floor(base);
+    return Math.floor(Math.random() * 20000 + 5000);
   }
 
+  // --------------------------------------------------
+  // PUBLISH TIME PICKER
+  // --------------------------------------------------
   pickPublishTime() {
     const bestHours = [10, 12, 14, 16];
     const hour = bestHours[Math.floor(Math.random() * bestHours.length)];
@@ -164,6 +209,9 @@ class ContentStrategyAgent {
     return date.toISOString();
   }
 
+  // --------------------------------------------------
+  // RECENT TOPICS
+  // --------------------------------------------------
   getRecentTopics() {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
